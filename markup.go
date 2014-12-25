@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/russross/blackfriday"
+	"github.com/krrrr38/blackfriday"
 	"github.com/swdyh/go-enumerable/src/enumerable"
 	"regexp"
 	"sync"
@@ -24,7 +24,7 @@ func MakeSlide(pageTotal *int, markdown []byte) []byte {
 	for i, page := range pages {
 		wg.Add(1)
 		go func(i int, page string) {
-			content := blackfriday.MarkdownBasic([]byte(page))
+			content := blackfriday.MarkdownCommon([]byte(page))
 			htmls[i] = fmt.Sprintf("<div class=\"content\" id=\"slide-%d\"><div class=\"container\">%s</div></div>", i+(*pageTotal), string(content[:]))
 			wg.Done()
 		}(i, page)

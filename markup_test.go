@@ -6,7 +6,8 @@ import (
 )
 
 func TestMakeSlide(t *testing.T) {
-	pages := MakeSlide([]byte("!SLIDE\nyuno"))
+	var pageCount = 0
+	pages := MakeSlide(&pageCount, []byte("!SLIDE\nyuno"))
 	if strings.Count(string(pages[:]), "container") != 1 {
 		t.Error("should have one page")
 	}
@@ -17,13 +18,17 @@ func TestMakeSlide(t *testing.T) {
 		t.Error("should contain content")
 	}
 
-	pages = MakeSlide([]byte("!SLIDE\nyuno\n!SLIDE\nmiyako"))
+	pages = MakeSlide(&pageCount, []byte("!SLIDE\nyuno\n!SLIDE\nmiyako"))
 	if strings.Count(string(pages[:]), "container") != 2 {
 		t.Error("should have two page")
 	}
 
-	pages = MakeSlide([]byte("!SLIDE\nyuno\n  !SLIDE\nmiyako"))
+	pages = MakeSlide(&pageCount, []byte("!SLIDE\nyuno\n  !SLIDE\nmiyako"))
 	if strings.Count(string(pages[:]), "container") != 1 {
 		t.Error("should have one page")
+	}
+
+	if pageCount != 4 {
+		t.Error("should have total 4 pages")
 	}
 }
