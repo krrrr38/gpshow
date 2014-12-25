@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
+	"github.com/google/go-github/github"
 	"github.com/krrrr38/gpshow/utils"
 )
 
@@ -34,7 +36,7 @@ type OfflineAdapter struct {
 
 // GistAdapter contain gist info
 type GistAdapter struct {
-	url string
+	id string
 }
 
 // HTML generate slide html based on config in base dir
@@ -68,5 +70,39 @@ func (adapter *OfflineAdapter) HTML() []byte {
 
 // HTML generate slide html based on config in base dir
 func (adapter *GistAdapter) HTML() []byte {
-	return nil // TODO
+	var buffer bytes.Buffer
+	var pageTotal = 0
+	var title string
+	gist := FetchGist(adapter.id)
+	files := gist.Files
+	if conffile, ok := files["conf.js"]; ok {
+		config := Config([]byte(*conffile.Content))
+		title = config.Title
+		for _, section := range config.Sections {
+			if markdown, ok := files[github.GistFilename(fmt.Sprintf("%s.md", section))]; ok {
+				buffer.Write(MakeSlide(&pageTotal, []byte(*markdown.Content)))
+			} else {
+				utils.Log("warn", fmt.Sprintf("cannot find %s.md in this gist", section))
+			}
+		}
+	} else {
+		title = *gist.Description
+		for _, file := range files {
+			if strings.HasSuffix(*file.Filename, ".md") {
+				buffer.Write(MakeSlide(&pageTotal, []byte(*file.Content)))
+			} else {
+				utils.Log("warn", fmt.Sprintf("`%s` is not have `.md` ext.", *file.Filename))
+			}
+		}
+	}
+
+	content := &SlideContent{
+		Title:     title,
+		Slides:    buffer.String(),
+		Asset:     AssetsPath,
+		JQuery:    jquery,
+		Prettyfy:  prettify,
+		Languages: languages,
+	}
+	return Render(content)
 }

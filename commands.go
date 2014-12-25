@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/krrrr38/gpshow/utils"
@@ -67,7 +68,7 @@ func PShowAction(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	config := Config(showPath + "/conf.js")
+	config := ConfigFile(showPath + "/conf.js")
 	adapter := &DefaultAdapter{
 		showPath: showPath,
 		config:   config,
@@ -125,7 +126,7 @@ func doOffline(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	config := Config(showPath + "/conf.js")
+	config := ConfigFile(showPath + "/conf.js")
 	adapter := &OfflineAdapter{
 		showPath: showPath,
 		config:   config,
@@ -137,14 +138,27 @@ func doOffline(c *cli.Context) {
 
 func doGist(c *cli.Context) {
 	port := c.Int("port")
-	url := c.Args().First()
-	if url == "" {
+	arg := c.Args().First()
+	if arg == "" {
 		cli.ShowCommandHelp(c, "gist")
 		os.Exit(1)
 	}
 
+	// arg should be following cases
+	// 1. https://gist.github.com/krrrr38/d709ca3a8cf92e4294b7
+	// 2. https://gist.github.com/d709ca3a8cf92e4294b7.git
+	// 3. git@gist.github.com:/d709ca3a8cf92e4294b7.git
+	// 4. d709ca3a8cf92e4294b7
+	// then, id = d709ca3a8cf92e4294b7
+	id := extractGistID(arg)
+
 	adapter := &GistAdapter{
-		url: url,
+		id: id,
 	}
 	Server(port, adapter)
+}
+
+func extractGistID(arg string) string {
+	parts := strings.Split(arg, "/")
+	return strings.Replace(parts[len(parts)-1], ".git", "", -1)
 }

@@ -8,6 +8,7 @@ make slideshows with markdown text.
 
 ## Usage
 
+#### Basic Usage
 ```bash
 $ gpshow init myslide
 $ cd myslide
@@ -16,6 +17,11 @@ $ open http://localhost:3000
 ```
 
 ![](./images/howto.gif)
+
+#### With Gist
+```bash
+$ gpshow gist https://gist.github.com/krrrr38/bf375a762497af9534e1
+```
 
 ## Install
 
@@ -29,7 +35,6 @@ $ gpshow --help
 
 ## TODO
 - `pgshow offline ...`
-- `pgshow gist ...`
 
 ## Contribution
 
