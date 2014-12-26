@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/krrrr38/gpshow/utils"
+	"github.com/toqueteos/webbrowser"
 )
 
 type staticBinaryHandler struct{}
@@ -22,9 +25,20 @@ func Server(port int, slidemaker SlideMaker) {
 		dir := fmt.Sprintf("/%s/", path)
 		http.Handle(dir, http.StripPrefix(dir, http.FileServer(http.Dir(path))))
 	}
-	http.Handle(AssetsPath, &staticBinaryHandler{})
+	http.Handle("/"+AssetsPath, &staticBinaryHandler{})
 
 	utils.Log("info", fmt.Sprintf("starting show on http://localhost:%d", port))
+	utils.Log("info", "Press ctrl+c to stop")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for _ = range c {
+			utils.Log("info", "thank you for watching...")
+			os.Exit(1)
+		}
+	}()
+	webbrowser.Open(fmt.Sprintf("http://localhost:%d", port))
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
