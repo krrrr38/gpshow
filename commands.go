@@ -82,42 +82,16 @@ func doInit(c *cli.Context) {
 		cli.ShowCommandHelp(c, "init")
 		os.Exit(1)
 	}
-	err := os.Mkdir(projectName, 0777)
+	err := os.MkdirAll(projectName, 0755)
 	utils.DieIf(err)
 
-	templateDir := "resources/project_template"
-	templateFiles, err := AssetDir(templateDir)
-	utils.DieIf(err)
+	CopyResourceDir("project_template", projectName)
 
-	for _, filename := range templateFiles {
-		generateProjectTemplates(projectName, templateDir, filename)
-	}
 	utils.Log("info", fmt.Sprintf("Generate new slide project directory: %s", projectName))
 }
 
-func generateProjectTemplates(projectDir, templateDir, filename string) {
-	templatePath := templateDir + "/" + filename
-	projectPath := projectDir + "/" + filename
-	_, err := AssetInfo(templatePath)
-
-	if err != nil {
-		err := os.Mkdir(projectPath, 0777)
-		utils.DieIf(err)
-
-		templateFiles, err := AssetDir(templatePath)
-		utils.DieIf(err)
-		for _, nextFilename := range templateFiles {
-			generateProjectTemplates(projectPath, templatePath, nextFilename)
-		}
-	} else {
-		bytes, err := Asset(templatePath)
-		utils.DieIf(err)
-		ioutil.WriteFile(projectPath, bytes, os.ModePerm)
-	}
-}
-
 func doOffline(c *cli.Context) {
-	// outDir := c.String("output")
+	outDir := c.String("output")
 	showPath := c.String("show")
 	showPathInfo, err := os.Stat(showPath)
 	utils.DieIf(err)
@@ -127,13 +101,19 @@ func doOffline(c *cli.Context) {
 	}
 
 	config := ConfigFile(showPath + "/conf.js")
+
+	os.RemoveAll(outDir)
+	utils.DieIf(os.Mkdir(outDir, 0755))
+
 	adapter := &OfflineAdapter{
 		showPath: showPath,
 		config:   config,
+		outDir:   outDir,
 	}
 	html := adapter.HTML()
-	utils.Log("warn", string(html))
-	// TODO
+
+	ioutil.WriteFile(fmt.Sprintf("%s/index.html", outDir), html, 0644)
+	utils.Log("info", fmt.Sprintf("create static slides in `%s` directory.", outDir))
 }
 
 func doGist(c *cli.Context) {

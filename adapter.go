@@ -11,9 +11,9 @@ import (
 )
 
 // assets path for static contents of server
-const AssetsPath = "/assets/"
-const prettify = "http://cdnjs.cloudflare.com/ajax/libs/prettify/r298/"
-const jquery = "http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"
+const AssetsPath = "assets/"
+const prettifyURLBase = "http://cdnjs.cloudflare.com/ajax/libs/prettify/r298/"
+const jqueryURL = "http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"
 
 var languages = []string{"apollo", "basic", "clj", "css", "dart", "erlang", "go", "hs", "lisp", "llvm", "lua", "matlab", "ml", "mumps", "n", "pascal", "proto", "r", "rd", "scala", "sql", "tcl", "tex", "vb", "vhdl", "wiki", "xq", "yaml"}
 
@@ -32,6 +32,7 @@ type DefaultAdapter struct {
 type OfflineAdapter struct {
 	showPath string
 	config   Configuration
+	outDir   string
 }
 
 // GistAdapter contain gist info
@@ -41,23 +42,13 @@ type GistAdapter struct {
 
 // HTML generate slide html based on config in base dir
 func (adapter *DefaultAdapter) HTML() []byte {
-	var buffer bytes.Buffer
-	showPath := adapter.showPath
-	var pageTotal = 0
-	for _, section := range adapter.config.Sections {
-		markdownPath := fmt.Sprintf("%s/%s/%s.md", showPath, section, section)
-		markdown, err := ioutil.ReadFile(markdownPath)
-		if err != nil {
-			utils.Log("warn", fmt.Sprintf("no file(s) at path %s/%s/%s.md", showPath, section, section))
-		}
-		buffer.Write(MakeSlide(&pageTotal, markdown))
-	}
+	slides := generateLocalSlides(adapter.showPath, adapter.config)
 	content := &SlideContent{
 		Title:     adapter.config.Title,
-		Slides:    buffer.String(),
-		Asset:     AssetsPath,
-		JQuery:    jquery,
-		Prettyfy:  prettify,
+		Slides:    slides,
+		Asset:     "/" + AssetsPath,
+		JQuery:    jqueryURL,
+		Prettyfy:  prettifyURLBase,
 		Languages: languages,
 	}
 	return Render(content)
@@ -65,7 +56,48 @@ func (adapter *DefaultAdapter) HTML() []byte {
 
 // HTML generate static slide html based on config in base dir
 func (adapter *OfflineAdapter) HTML() []byte {
-	return nil // TODO
+	showPath := adapter.showPath
+	slides := generateLocalSlides(showPath, adapter.config)
+
+	CopyResourceDir("assets", adapter.outDir+"/assets")
+	CopyLocalStaticFiles(adapter.outDir, showPath, adapter.config.Sections)
+
+	prettifyBasePath := AssetsPath + "prettify/"
+	downloadFiles := []StaticDownload{
+		StaticDownload{jqueryURL, AssetsPath + "js/", "jquery.min.js"},
+		StaticDownload{prettifyURLBase + "prettify.css", prettifyBasePath, "prettify.css"},
+		StaticDownload{prettifyURLBase + "prettify.js", prettifyBasePath, "prettify.js"},
+	}
+	for _, lang := range languages {
+		filename := fmt.Sprintf("lang-%s.js", lang)
+		langFile := StaticDownload{prettifyURLBase + filename, prettifyBasePath, filename}
+		downloadFiles = append(downloadFiles, langFile)
+	}
+	DownloadStaticFiles(adapter.outDir, downloadFiles)
+
+	content := &SlideContent{
+		Title:     adapter.config.Title,
+		Slides:    slides,
+		Asset:     AssetsPath,
+		JQuery:    AssetsPath + "js/jquery.min.js",
+		Prettyfy:  prettifyBasePath,
+		Languages: languages,
+	}
+	return Render(content)
+}
+
+func generateLocalSlides(showPath string, config Configuration) string {
+	var buffer bytes.Buffer
+	var pageTotal = 0
+	for _, section := range config.Sections {
+		markdownPath := fmt.Sprintf("%s/%s/%s.md", showPath, section, section)
+		markdown, err := ioutil.ReadFile(markdownPath)
+		if err != nil {
+			utils.Log("warn", fmt.Sprintf("no file(s) at path %s/%s/%s.md", showPath, section, section))
+		}
+		buffer.Write(MakeSlide(&pageTotal, markdown))
+	}
+	return buffer.String()
 }
 
 // HTML generate slide html based on config in base dir
@@ -100,8 +132,8 @@ func (adapter *GistAdapter) HTML() []byte {
 		Title:     title,
 		Slides:    buffer.String(),
 		Asset:     AssetsPath,
-		JQuery:    jquery,
-		Prettyfy:  prettify,
+		JQuery:    jqueryURL,
+		Prettyfy:  prettifyURLBase,
 		Languages: languages,
 	}
 	return Render(content)

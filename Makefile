@@ -24,3 +24,5 @@ install: deps
 clean:
 	rm resources.go
 	go clean
+
+.PHONY: build lint test deps testdeps install clean
